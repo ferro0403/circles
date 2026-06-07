@@ -8,16 +8,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#08090b",
-        panel: "#111316",
-        lime: "#c9ff4a",
-        muted: "#8d929a",
+        ink: "#070709",
+        panel: "#121116",
+        violet: {
+          DEFAULT: "#9d5cff",
+          300: "#c4b5fd",
+          400: "#a78bfa",
+          800: "#5b21b6",
+        },
+        muted: "#92909a",
       },
       boxShadow: {
-        glow: "0 0 40px rgba(201, 255, 74, 0.12)",
+        glow: "0 0 44px rgba(157, 92, 255, 0.22)",
+        card: "0 18px 60px rgba(0, 0, 0, 0.32)",
       },
     },
   },
   plugins: [],
 };
+
 export default config;

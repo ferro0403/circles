@@ -6,7 +6,7 @@ import { PinIcon } from "@/components/icons";
 export function PlaceVisual({ variant, className = "" }: { variant: string; className?: string }) {
   const styles: Record<string, string> = {
     cinema: "from-indigo-950 via-violet-800 to-rose-500",
-    bar: "from-amber-900 via-orange-600 to-lime-300",
+    bar: "from-amber-900 via-orange-600 to-violet-300",
     gym: "from-slate-900 via-cyan-800 to-cyan-300",
     restaurant: "from-red-950 via-rose-800 to-amber-400",
   };
@@ -26,7 +26,7 @@ export function PlaceCard({ place, compact = false }: { place: Place; compact?: 
       <PlaceVisual variant={place.image} className={compact ? "h-28" : "h-36"} />
       <div className="p-4">
         <div className="mb-1 flex items-start justify-between gap-3">
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-lime">{place.category}</p><h3 className="mt-0.5 font-bold text-white">{place.name}</h3></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet">{place.category}</p><h3 className="mt-0.5 font-bold text-white">{place.name}</h3></div>
           <span className="mt-1 text-xs text-zinc-500">{place.distance}</span>
         </div>
         <p className="flex items-center gap-1 text-xs text-zinc-500"><PinIcon className="size-3.5" />{place.address.split(",")[0]}</p>
