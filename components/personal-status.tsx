@@ -3,7 +3,8 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { CheckIcon, ChevronRightIcon, ClockIcon, PencilIcon } from "@/components/icons";
-import { Avatar, StatusDot } from "@/components/ui";
+import { StatusDot } from "@/components/ui";
+import { SavedAvatar } from "@/components/local-profile";
 import { currentUser } from "@/data/mock-data";
 
 const presets = ["Libero", "Occupato", "Studio", "Lavoro", "Aperitivo", "Sport"];
@@ -25,7 +26,7 @@ export function PersonalStatus() {
     <section className="relative overflow-hidden rounded-[2rem] border border-violet/25 bg-gradient-to-br from-violet/[0.18] via-[#17121f] to-panel p-5 shadow-card">
       <div className="absolute -right-10 -top-14 size-40 rounded-full bg-violet/20 blur-3xl" />
       <div className="relative flex items-start gap-4">
-        <Avatar initials={currentUser.initials} className="size-14 text-sm text-white" tone="bg-gradient-to-br from-violet to-fuchsia-500" />
+        <SavedAvatar initials={currentUser.initials} className="size-14 text-sm text-white" tone="bg-gradient-to-br from-violet to-fuchsia-500" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400"><StatusDot />Il tuo stato</div>
           <h1 className="mt-1.5 text-xl font-bold leading-tight">{status}</h1>
