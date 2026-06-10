@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRightIcon, QrIcon, ShieldIcon, UserIcon } from "@/components/icons";
-import { Avatar, PageHeader, StatusDot } from "@/components/ui";
+import { PageHeader, StatusDot } from "@/components/ui";
+import { SavedAvatar } from "@/components/local-profile";
 import { currentUser } from "@/data/mock-data";
 
 const settings = [
@@ -11,7 +12,7 @@ const settings = [
 
 export default function ProfilePage() {
   return <div className="pb-4"><PageHeader title="Profilo" eyebrow="Il tuo spazio" />
-    <section className="mt-4 flex flex-col items-center rounded-[2rem] border border-white/10 bg-panel p-6 text-center"><div className="relative"><Avatar initials={currentUser.initials} className="size-24 text-2xl" tone="bg-violet" /><span className="absolute bottom-1 right-1 size-4 rounded-full border-4 border-panel bg-violet" /></div><h2 className="mt-4 text-2xl font-bold">{currentUser.name}</h2><p className="mt-1 text-sm font-semibold text-violet">{currentUser.nickname}</p><p className="mt-3 max-w-xs text-sm text-zinc-500">Riolo Terme · Nel gruppo dal 2026</p><Link href="/avatar" className="mt-5 rounded-full bg-violet px-5 py-2.5 text-xs font-bold text-white shadow-glow">Crea il tuo avatar</Link></section>
+    <section className="mt-4 flex flex-col items-center rounded-[2rem] border border-white/10 bg-panel p-6 text-center"><div className="relative"><SavedAvatar initials={currentUser.initials} className="size-24 text-2xl" tone="bg-violet" /><span className="absolute bottom-1 right-1 size-4 rounded-full border-4 border-panel bg-violet" /></div><h2 className="mt-4 text-2xl font-bold">{currentUser.name}</h2><p className="mt-1 text-sm font-semibold text-violet">{currentUser.nickname}</p><p className="mt-3 max-w-xs text-sm text-zinc-500">Riolo Terme · Nel gruppo dal 2026</p><Link href="/avatar" className="mt-5 rounded-full bg-violet px-5 py-2.5 text-xs font-bold text-white shadow-glow">Modifica avatar</Link></section>
 
     <section className="mt-5 rounded-3xl border border-white/10 bg-white p-5 text-black"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Il tuo Circle code</p><h3 className="mt-1 text-lg font-bold">Fatti aggiungere</h3></div><QrIcon className="size-20" /></div><p className="mt-3 text-xs leading-5 text-zinc-500">Mostra questo codice a un amico per connettervi su Circle.</p></section>
 
