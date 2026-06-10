@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui";
 
-export const AVATAR_STORAGE_KEY = "circle.avatar.dicebear.v1";
-const LEGACY_STORAGE_KEYS = ["circle.avatar.v1", "circle-avatar"];
+export const AVATAR_STORAGE_KEY = "circle.avatar.dicebear.v2";
+const LEGACY_STORAGE_KEYS = ["circle.avatar.dicebear.v1", "circle.avatar.v1", "circle-avatar"];
 const AVATAR_EVENT = "circle-avatar-updated";
 const DICEBEAR_ENDPOINT = "https://api.dicebear.com/10.x/adventurer/svg";
 
@@ -14,9 +14,14 @@ export type AvatarOptions = {
   hair: string;
   hairColor: string;
   eyes: string;
+  eyebrows: string;
   mouth: string;
+  glasses: string | null;
+  earrings: string | null;
+  details: string | null;
   backgroundColor: string;
-  glasses: boolean;
+  scale: number;
+  rotate: number;
 };
 
 export const defaultAvatar: AvatarOptions = {
@@ -25,17 +30,28 @@ export const defaultAvatar: AvatarOptions = {
   hair: "short05",
   hairColor: "6a4e35",
   eyes: "variant04",
+  eyebrows: "variant01",
   mouth: "variant10",
+  glasses: null,
+  earrings: null,
+  details: null,
   backgroundColor: "7c3aed",
-  glasses: false,
+  scale: 1,
+  rotate: 0,
 };
 
-function isDiceBearAvatar(value: unknown): value is Partial<AvatarOptions> {
+function isDiceBearAvatar(value: unknown): value is Partial<AvatarOptions> & { glasses?: string | boolean | null } {
   return Boolean(value && typeof value === "object" && "seed" in value);
 }
 
 function normalizeAvatar(value: unknown): AvatarOptions | null {
-  return isDiceBearAvatar(value) ? { ...defaultAvatar, ...value } : null;
+  if (!isDiceBearAvatar(value)) return null;
+
+  return {
+    ...defaultAvatar,
+    ...value,
+    glasses: typeof value.glasses === "string" ? value.glasses : value.glasses ? "variant01" : null,
+  };
 }
 
 function readAvatar(): AvatarOptions | null {
@@ -43,10 +59,12 @@ function readAvatar(): AvatarOptions | null {
     const stored = window.localStorage.getItem(AVATAR_STORAGE_KEY);
     if (stored) return normalizeAvatar(JSON.parse(stored));
 
-    const hadLegacyAvatar = LEGACY_STORAGE_KEYS.some((key) => window.localStorage.getItem(key));
-    if (hadLegacyAvatar) {
-      window.localStorage.setItem(AVATAR_STORAGE_KEY, JSON.stringify(defaultAvatar));
-      return defaultAvatar;
+    for (const key of LEGACY_STORAGE_KEYS) {
+      const legacy = window.localStorage.getItem(key);
+      if (!legacy) continue;
+      const avatar = normalizeAvatar(JSON.parse(legacy)) ?? defaultAvatar;
+      window.localStorage.setItem(AVATAR_STORAGE_KEY, JSON.stringify(avatar));
+      return avatar;
     }
 
     return null;
@@ -62,11 +80,20 @@ export function getDiceBearUrl(options: AvatarOptions) {
     hairVariant: options.hair,
     hairColor: options.hairColor,
     eyesVariant: options.eyes,
+    eyebrowsVariant: options.eyebrows,
     mouthVariant: options.mouth,
     backgroundColor: options.backgroundColor,
+    scale: String(options.scale),
+    rotate: String(options.rotate),
     glassesProbability: options.glasses ? "100" : "0",
+    earringsProbability: options.earrings ? "100" : "0",
+    detailsProbability: options.details ? "100" : "0",
     borderRadius: "18",
   });
+
+  if (options.glasses) params.set("glassesVariant", options.glasses);
+  if (options.earrings) params.set("earringsVariant", options.earrings);
+  if (options.details) params.set("detailsVariant", options.details);
 
   return `${DICEBEAR_ENDPOINT}?${params.toString()}`;
 }

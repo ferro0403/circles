@@ -1,56 +1,116 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeftIcon, CheckIcon, ExternalIcon, SparklesIcon } from "@/components/icons";
-import { AvatarArt, defaultAvatar, useSavedAvatar } from "@/components/local-profile";
+import { ArrowLeftIcon, CheckIcon, ChevronRightIcon, ExternalIcon, SparklesIcon } from "@/components/icons";
+import { AvatarArt, defaultAvatar, getDiceBearUrl, useSavedAvatar } from "@/components/local-profile";
 import type { AvatarOptions } from "@/components/local-profile";
 
-const optionSets = {
-  hair: ["short01", "short05", "short08", "short13", "short18", "long03", "long10", "long19"],
-  eyes: ["variant01", "variant04", "variant07", "variant09", "variant12", "variant15", "variant20", "variant26"],
-  mouth: ["variant01", "variant05", "variant10", "variant13", "variant18", "variant22", "variant25", "variant30"],
+const range = (prefix: string, count: number) => Array.from({ length: count }, (_, index) => `${prefix}${String(index + 1).padStart(2, "0")}`);
+const variantRange = (count: number) => range("variant", count);
+
+const DICEBEAR_OPTIONS = {
+  hair: [...range("long", 26), ...range("short", 19)],
+  eyes: variantRange(26),
+  eyebrows: variantRange(15),
+  mouth: variantRange(30),
+  glasses: variantRange(5),
+  earrings: variantRange(6),
+  details: ["birthmark", "blush", "freckles", "mustache"],
 } as const;
 
-const labels: Record<string, string> = {
-  short01: "Pixie", short05: "Corti", short08: "Ciuffo", short13: "Mossi", short18: "Rasati", long03: "Caschetto", long10: "Ricci", long19: "Lunghi",
-  variant01: "Classico", variant04: "Solare", variant07: "Dolce", variant09: "Deciso", variant12: "Allegro", variant15: "Sognante", variant20: "Vivace", variant26: "Sorpreso",
-  variant05: "Sereno", variant10: "Sorriso", variant13: "Risata", variant18: "Timido", variant22: "Sicuro", variant25: "Wow", variant30: "Scherzoso",
-};
+const skinColors = [
+  { value: "f2d3b1", label: "Chiara" },
+  { value: "ecad80", label: "Dorata" },
+  { value: "9e5622", label: "Bruna" },
+  { value: "763900", label: "Scura" },
+] as const;
 
-const colors = {
-  skinColor: ["f2d3b1", "ecad80", "d08b5b", "9e5622", "763900"],
-  hairColor: ["0e0e0e", "6a4e35", "562306", "ac6511", "b9a05f", "afafaf", "592454", "ab2a18"],
-  backgroundColor: ["5b21b6", "7c3aed", "2563eb", "0891b2", "059669", "be185d", "c2410c", "3f3f46"],
+const hairColors = [
+  { value: "0e0e0e", label: "Nero" },
+  { value: "2c1b18", label: "Castano scuro" },
+  { value: "6a4e35", label: "Castano" },
+  { value: "562306", label: "Castano intenso" },
+  { value: "796a45", label: "Castano chiaro" },
+  { value: "ac6511", label: "Biondo scuro" },
+  { value: "b9a05f", label: "Biondo" },
+  { value: "e5d7a3", label: "Biondo platino" },
+  { value: "cb6820", label: "Ramato" },
+  { value: "ab2a18", label: "Rosso" },
+  { value: "afafaf", label: "Grigio" },
+  { value: "f5f5f5", label: "Bianco" },
+  { value: "2563eb", label: "Blu" },
+  { value: "85c2c6", label: "Azzurro" },
+  { value: "3eac2c", label: "Verde" },
+  { value: "dba3be", label: "Rosa" },
+  { value: "592454", label: "Viola" },
+] as const;
+
+const backgroundColors = [
+  { value: "5b21b6", label: "Viola scuro" }, { value: "7c3aed", label: "Viola" },
+  { value: "2563eb", label: "Blu" }, { value: "0891b2", label: "Azzurro" },
+  { value: "059669", label: "Verde" }, { value: "be185d", label: "Rosa" },
+  { value: "c2410c", label: "Arancio" }, { value: "3f3f46", label: "Grafite" },
+] as const;
+
+const sectionMeta = {
+  appearance: { title: "Aspetto", description: "Nome, dimensione e rotazione" },
+  skin: { title: "Pelle", description: `${skinColors.length} colori` },
+  hair: { title: "Capelli", description: `${DICEBEAR_OPTIONS.hair.length} varianti · ${hairColors.length} colori` },
+  eyes: { title: "Occhi", description: `${DICEBEAR_OPTIONS.eyes.length} occhi · ${DICEBEAR_OPTIONS.eyebrows.length} sopracciglia` },
+  mouth: { title: "Bocca / Espressione", description: `${DICEBEAR_OPTIONS.mouth.length} varianti` },
+  accessories: { title: "Accessori", description: `${DICEBEAR_OPTIONS.glasses.length + DICEBEAR_OPTIONS.earrings.length + DICEBEAR_OPTIONS.details.length} varianti` },
+  outfit: { title: "Outfit", description: "Non disponibile in Adventurer" },
+  background: { title: "Sfondo", description: `${backgroundColors.length} colori` },
 } as const;
 
+type SectionKey = keyof typeof sectionMeta;
 const randomSeeds = ["Luna", "Milo", "Sole", "Pixel", "Nova", "Rio", "Ziggy", "Clover", "Pepper", "Sky"];
 
-function ChoiceRow<K extends keyof typeof optionSets>({ title, name, value, onChange }: { title: string; name: K; value: AvatarOptions[K]; onChange: (value: AvatarOptions[K]) => void }) {
+function Accordion({ id, open, onToggle, children }: { id: SectionKey; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  const meta = sectionMeta[id];
+  return (
+    <section className="overflow-hidden rounded-3xl border border-white/10 bg-panel">
+      <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-4 text-left" aria-expanded={open} aria-controls={`avatar-section-${id}`}>
+        <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-white">{meta.title}</span><span className="mt-0.5 block text-xs text-zinc-500">{meta.description}</span></span>
+        <ChevronRightIcon className={`size-5 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-90 text-violet" : ""}`} />
+      </button>
+      {open && <div id={`avatar-section-${id}`} className="border-t border-white/10 px-4 py-5">{children}</div>}
+    </section>
+  );
+}
+
+function VariantGrid<K extends keyof AvatarOptions>({ title, options, optionKey, value, avatar, onChange, nullable = false }: { title: string; options: readonly string[]; optionKey: K; value: AvatarOptions[K]; avatar: AvatarOptions; onChange: (value: AvatarOptions[K]) => void; nullable?: boolean }) {
+  const values = nullable ? [null, ...options] : options;
   return (
     <fieldset>
-      <legend className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">{title}</legend>
-      <div className="hide-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
-        {optionSets[name].map((option) => (
-          <button type="button" key={option} onClick={() => onChange(option)} className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-semibold transition ${value === option ? "border-violet bg-violet text-white shadow-glow" : "border-white/10 bg-white/[0.04] text-zinc-400 hover:border-white/20 hover:text-white"}`} aria-pressed={value === option}>
-            {labels[option]}
-          </button>
-        ))}
+      <legend className="mb-3 flex w-full items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.14em] text-zinc-400"><span>{title}</span><span className="text-[10px] text-zinc-600">{options.length} disponibili</span></legend>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {values.map((option) => {
+          const selected = value === option;
+          const preview = { ...avatar, [optionKey]: option } as AvatarOptions;
+          const label = option === null ? "Nessuno" : option.replace("variant", "Variante ").replace("short", "Corto ").replace("long", "Lungo ");
+          const shortLabel = option === null ? "Nessuno" : option.replace("variant", "V").replace("short", "C").replace("long", "L");
+          return (
+            <button type="button" key={option ?? "none"} onClick={() => onChange(option as AvatarOptions[K])} className={`relative min-w-0 overflow-hidden rounded-2xl border p-1.5 text-center transition ${selected ? "border-violet bg-violet/15 ring-1 ring-violet" : "border-white/10 bg-black/20 active:scale-95"}`} aria-pressed={selected} aria-label={`${title}: ${label}`}>
+              {option === null ? <span className="grid aspect-square place-items-center rounded-xl bg-white/[0.04] text-2xl text-zinc-600">×</span> : <img src={getDiceBearUrl(preview)} alt="" loading="lazy" className="aspect-square w-full rounded-xl bg-zinc-900 object-cover" />}
+              <span className="mt-1.5 block truncate px-0.5 text-[10px] font-semibold text-zinc-300">{shortLabel}</span>
+              {selected && <span className="absolute right-2 top-2 grid size-5 place-items-center rounded-full bg-violet text-white"><CheckIcon className="size-3" /></span>}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
 }
 
-function ColorRow({ title, palette, value, onChange }: { title: string; palette: readonly string[]; value: string; onChange: (value: string) => void }) {
+function ColorGrid({ title, colors, value, onChange }: { title: string; colors: readonly { value: string; label: string }[]; value: string; onChange: (value: string) => void }) {
   return (
     <fieldset>
-      <legend className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">{title}</legend>
-      <div className="mt-3 flex flex-wrap gap-3 rounded-2xl border border-white/10 bg-panel p-3">
-        {palette.map((color) => (
-          <button type="button" key={color} onClick={() => onChange(color)} className={`grid size-11 place-items-center rounded-full border border-white/10 transition ${value === color ? "ring-2 ring-violet ring-offset-4 ring-offset-panel" : "hover:scale-105"}`} style={{ backgroundColor: `#${color}` }} aria-label={`${title}: #${color}`} aria-pressed={value === color}>
-            {value === color && <CheckIcon className="size-5 text-white drop-shadow" />}
-          </button>
-        ))}
+      <legend className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">{title}</legend>
+      <div className="grid grid-cols-2 gap-2">
+        {colors.map((color) => <button type="button" key={color.value} onClick={() => onChange(color.value)} className={`flex min-w-0 items-center gap-2 rounded-2xl border p-2.5 text-left transition ${value === color.value ? "border-violet bg-violet/10" : "border-white/10 bg-black/20"}`} aria-pressed={value === color.value}><span className="grid size-9 shrink-0 place-items-center rounded-full border border-white/15" style={{ backgroundColor: `#${color.value}` }}>{value === color.value && <CheckIcon className="size-4 text-white drop-shadow" />}</span><span className="truncate text-[11px] font-semibold text-zinc-300">{color.label}</span></button>)}
       </div>
     </fieldset>
   );
@@ -59,11 +119,10 @@ function ColorRow({ title, palette, value, onChange }: { title: string; palette:
 export function AvatarCreator() {
   const { avatar: savedAvatar, hydrated, saveAvatar } = useSavedAvatar();
   const [options, setOptions] = useState<AvatarOptions>(defaultAvatar);
+  const [openSection, setOpenSection] = useState<SectionKey>("appearance");
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    if (hydrated) setOptions(savedAvatar ?? defaultAvatar);
-  }, [hydrated, savedAvatar]);
+  useEffect(() => { if (hydrated) setOptions(savedAvatar ?? defaultAvatar); }, [hydrated, savedAvatar]);
 
   function update<K extends keyof AvatarOptions>(key: K, value: AvatarOptions[K]) {
     setOptions((current) => ({ ...current, [key]: value }));
@@ -74,13 +133,13 @@ export function AvatarCreator() {
     const pick = <T,>(values: readonly T[]) => values[Math.floor(Math.random() * values.length)];
     setOptions({
       seed: `${pick(randomSeeds)}-${Date.now().toString(36)}`,
-      skinColor: pick(colors.skinColor),
-      hair: pick(optionSets.hair),
-      hairColor: pick(colors.hairColor),
-      eyes: pick(optionSets.eyes),
-      mouth: pick(optionSets.mouth),
-      backgroundColor: pick(colors.backgroundColor),
-      glasses: Math.random() > 0.7,
+      skinColor: pick(skinColors).value,
+      hair: pick(DICEBEAR_OPTIONS.hair), hairColor: pick(hairColors).value,
+      eyes: pick(DICEBEAR_OPTIONS.eyes), eyebrows: pick(DICEBEAR_OPTIONS.eyebrows), mouth: pick(DICEBEAR_OPTIONS.mouth),
+      glasses: Math.random() > 0.55 ? pick(DICEBEAR_OPTIONS.glasses) : null,
+      earrings: Math.random() > 0.65 ? pick(DICEBEAR_OPTIONS.earrings) : null,
+      details: Math.random() > 0.7 ? pick(DICEBEAR_OPTIONS.details) : null,
+      backgroundColor: pick(backgroundColors).value, scale: 1, rotate: 0,
     });
     setSaved(false);
   }
@@ -90,42 +149,37 @@ export function AvatarCreator() {
     setSaved(true);
   }
 
+  const accordion = (id: SectionKey, children: React.ReactNode) => <Accordion id={id} open={openSection === id} onToggle={() => setOpenSection((current) => current === id ? "appearance" : id)}>{children}</Accordion>;
+
   return (
-    <div className="pb-8">
+    <div className="min-h-dvh pb-28">
       <header className="flex items-center justify-between py-4">
         <Link href="/profilo" className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[0.04]" aria-label="Torna al profilo"><ArrowLeftIcon className="size-5" /></Link>
-        <div className="text-center"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet">Powered by DiceBear</p><h1 className="text-lg font-bold">Crea avatar</h1></div>
-        <span className="size-10" />
+        <div className="text-center"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet">DiceBear Adventurer</p><h1 className="text-lg font-bold">Crea avatar</h1></div><span className="size-10" />
       </header>
 
-      <section className="relative mx-auto mt-3 aspect-square max-w-[310px] overflow-hidden rounded-[2.5rem] border border-violet/25 bg-gradient-to-br from-violet/[0.13] via-panel to-black p-5 shadow-glow">
-        <div className="absolute left-5 top-5 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[10px] font-bold text-zinc-200 backdrop-blur"><SparklesIcon className="size-3.5 text-violet" />ANTEPRIMA LIVE</div>
-        <AvatarArt options={options} className="h-full w-full rounded-[2rem]" />
+      <section className="mx-auto mt-2 max-w-[280px] rounded-[2rem] border border-violet/25 bg-[#0d0c11] p-3 shadow-glow">
+        <div className="relative aspect-square overflow-hidden rounded-[1.45rem]"><div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[9px] font-bold text-zinc-200 backdrop-blur"><SparklesIcon className="size-3 text-violet" />LIVE</div><AvatarArt options={options} className="h-full w-full" /></div>
       </section>
 
-      <button type="button" onClick={surpriseMe} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-violet/30 bg-violet/10 px-4 py-3.5 text-sm font-bold text-violet transition hover:bg-violet/20"><SparklesIcon className="size-4" />Sorprendimi</button>
+      <button type="button" onClick={surpriseMe} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-violet/30 bg-violet/10 px-4 py-3 text-sm font-bold text-violet"><SparklesIcon className="size-4" />Sorprendimi</button>
 
-      <div className="mt-8 space-y-7">
-        <fieldset>
-          <label htmlFor="avatar-seed" className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">Nome avatar</label>
-          <p className="mt-1 text-xs text-zinc-500">Il nome rende il risultato unico e sempre riproducibile.</p>
-          <input id="avatar-seed" value={options.seed} onChange={(event) => update("seed", event.target.value)} maxLength={40} className="mt-3 w-full rounded-2xl border border-white/10 bg-panel px-4 py-3.5 text-sm font-semibold text-white outline-none transition placeholder:text-zinc-600 focus:border-violet" placeholder="Scrivi un nome" />
-        </fieldset>
-        <ColorRow title="Colore pelle" palette={colors.skinColor} value={options.skinColor} onChange={(value) => update("skinColor", value)} />
-        <ChoiceRow title="Capelli" name="hair" value={options.hair} onChange={(value) => update("hair", value)} />
-        <ColorRow title="Colore capelli" palette={colors.hairColor} value={options.hairColor} onChange={(value) => update("hairColor", value)} />
-        <ChoiceRow title="Occhi" name="eyes" value={options.eyes} onChange={(value) => update("eyes", value)} />
-        <ChoiceRow title="Espressione" name="mouth" value={options.mouth} onChange={(value) => update("mouth", value)} />
-        <ColorRow title="Sfondo" palette={colors.backgroundColor} value={options.backgroundColor} onChange={(value) => update("backgroundColor", value)} />
-        <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-panel p-4">
-          <span><span className="block text-sm font-bold text-white">Occhiali</span><span className="mt-0.5 block text-xs text-zinc-500">Aggiungi un accessorio al tuo look</span></span>
-          <input type="checkbox" checked={options.glasses} onChange={(event) => update("glasses", event.target.checked)} className="peer sr-only" />
-          <span className="relative h-7 w-12 rounded-full bg-zinc-700 transition peer-checked:bg-violet after:absolute after:left-1 after:top-1 after:size-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5" />
-        </label>
+      <div className="mt-5 space-y-3">
+        {accordion("appearance", <div className="space-y-5"><label htmlFor="avatar-seed" className="block text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Nome avatar<input id="avatar-seed" value={options.seed} onChange={(event) => update("seed", event.target.value)} maxLength={40} className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-violet" /></label><label className="block text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Zoom <span className="float-right text-violet">{options.scale.toFixed(2)}×</span><input type="range" min="0.75" max="1.25" step="0.05" value={options.scale} onChange={(event) => update("scale", Number(event.target.value))} className="mt-4 w-full accent-violet" /></label><label className="block text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Rotazione <span className="float-right text-violet">{options.rotate}°</span><input type="range" min="-15" max="15" step="1" value={options.rotate} onChange={(event) => update("rotate", Number(event.target.value))} className="mt-4 w-full accent-violet" /></label><p className="rounded-2xl bg-white/[0.04] p-3 text-xs leading-5 text-zinc-500">Testa: variante default, l’unica supportata dallo stile Adventurer.</p></div>)}
+        {accordion("skin", <ColorGrid title="Colore pelle" colors={skinColors} value={options.skinColor} onChange={(value) => update("skinColor", value)} />)}
+        {accordion("hair", <div className="space-y-6"><VariantGrid title="Acconciatura" options={DICEBEAR_OPTIONS.hair} optionKey="hair" value={options.hair} avatar={options} onChange={(value) => update("hair", value)} /><ColorGrid title="Colore capelli" colors={hairColors} value={options.hairColor} onChange={(value) => update("hairColor", value)} /></div>)}
+        {accordion("eyes", <div className="space-y-6"><VariantGrid title="Occhi" options={DICEBEAR_OPTIONS.eyes} optionKey="eyes" value={options.eyes} avatar={options} onChange={(value) => update("eyes", value)} /><VariantGrid title="Sopracciglia" options={DICEBEAR_OPTIONS.eyebrows} optionKey="eyebrows" value={options.eyebrows} avatar={options} onChange={(value) => update("eyebrows", value)} /></div>)}
+        {accordion("mouth", <VariantGrid title="Bocca / espressione" options={DICEBEAR_OPTIONS.mouth} optionKey="mouth" value={options.mouth} avatar={options} onChange={(value) => update("mouth", value)} />)}
+        {accordion("accessories", <div className="space-y-6"><VariantGrid title="Occhiali" options={DICEBEAR_OPTIONS.glasses} optionKey="glasses" value={options.glasses} avatar={options} onChange={(value) => update("glasses", value)} nullable /><VariantGrid title="Orecchini" options={DICEBEAR_OPTIONS.earrings} optionKey="earrings" value={options.earrings} avatar={options} onChange={(value) => update("earrings", value)} nullable /><VariantGrid title="Dettagli" options={DICEBEAR_OPTIONS.details} optionKey="details" value={options.details} avatar={options} onChange={(value) => update("details", value)} nullable /></div>)}
+        {accordion("outfit", <div className="rounded-2xl border border-dashed border-white/15 bg-black/20 p-4 text-sm leading-6 text-zinc-400"><p className="font-bold text-white">Nessun outfit disponibile</p><p className="mt-1">Lo stile DiceBear Adventurer 10.1.0 è un ritratto e non include componenti per abiti o outfit. La sezione resta visibile per chiarire che non ci sono opzioni nascoste.</p></div>)}
+        {accordion("background", <ColorGrid title="Colore sfondo" colors={backgroundColors} value={options.backgroundColor} onChange={(value) => update("backgroundColor", value)} />)}
       </div>
 
-      <button type="button" onClick={save} className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet px-4 py-4 text-sm font-bold text-white shadow-glow transition hover:bg-violet/90">{saved ? <><CheckIcon className="size-5" />Avatar salvato</> : "Salva avatar"}</button>
-      <Link href="https://www.dicebear.com/styles/adventurer/" target="_blank" rel="noreferrer" className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-zinc-500 transition hover:text-zinc-300">Adventurer by Lisa Wischofsky · DiceBear <ExternalIcon className="size-3.5" /></Link>
+      <div className="mt-6 rounded-3xl border border-white/10 bg-[#0d0c11] p-3">
+        <button type="button" onClick={save} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet px-4 py-4 text-sm font-bold text-white shadow-glow">{saved ? <><CheckIcon className="size-5" />Avatar salvato</> : "Salva avatar"}</button>
+        <p className="mt-3 text-center text-[10px] leading-4 text-zinc-600">131 varianti personalizzabili esposte · salvataggio locale</p>
+      </div>
+      <Link href="https://www.dicebear.com/styles/adventurer/" target="_blank" rel="noreferrer" className="mt-5 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-zinc-500">Adventurer by Lisa Wischofsky · DiceBear <ExternalIcon className="size-3.5" /></Link>
     </div>
   );
 }
