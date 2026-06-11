@@ -14,6 +14,7 @@ type Availability = {
   note: string;
   date: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 const statusLabels: Record<AvailabilityStatus, string> = {
@@ -50,38 +51,58 @@ export function GroupAvailability({ groupId, activeNow, emoji }: { groupId: stri
   const [note, setNote] = useState("");
   const [dayChoice, setDayChoice] = useState<"today" | "tomorrow" | "custom">("today");
   const [customDate, setCustomDate] = useState(toLocalDate(new Date()));
-  const groupEntries = useMemo(() => entries.filter((entry) => entry.groupId === groupId), [entries, groupId]);
+  const groupEntries = useMemo(() => {
+    const uniqueByDay = new Map<string, Availability>();
+    entries.filter((entry) => entry.groupId === groupId).forEach((entry) => uniqueByDay.set(entry.date, entry));
+    return Array.from(uniqueByDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [entries, groupId]);
+  const todayEntry = groupEntries.find((entry) => entry.date === toLocalDate(new Date()));
+  const visibleMockMembers = groupEntries.length ? groupMembers.filter((member) => member.initials !== currentUser.initials) : groupMembers;
+
+  function toggleForm() {
+    if (!open && todayEntry) {
+      setStatus(todayEntry.status);
+      setNote(todayEntry.note);
+      setDayChoice("today");
+    }
+    setOpen((value) => !value);
+  }
 
   function addAvailability(event: FormEvent) {
     event.preventDefault();
     const date = dateFromChoice(dayChoice, customDate);
     if (!date) return;
-    const entry: Availability = {
-      id: `${groupId}-${Date.now()}`,
-      groupId,
-      status,
-      note: note.trim(),
-      date,
-      createdAt: new Date().toISOString(),
-    };
-    setEntries((current) => [...current, entry]);
+    const now = new Date().toISOString();
+    setEntries((current) => {
+      const existing = [...current].reverse().find((entry) => entry.groupId === groupId && entry.date === date);
+      const entry: Availability = {
+        id: existing?.id ?? `${groupId}-${date}`,
+        groupId,
+        status,
+        note: note.trim(),
+        date,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      };
+      return [...current.filter((item) => !(item.groupId === groupId && item.date === date)), entry];
+    });
     setNote("");
     setOpen(false);
   }
 
   return <>
-    <section className="rounded-[2rem] border border-violet/20 bg-gradient-to-br from-violet/[0.16] to-panel p-5"><div className="flex items-center justify-between"><div><p className="flex items-center gap-2 text-xs font-semibold text-violet"><StatusDot />{activeNow} persone attive</p><h2 className="mt-2 text-2xl font-bold">Chi c’è stasera?</h2></div><span className="text-4xl">{emoji}</span></div><button onClick={() => setOpen((value) => !value)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet py-3.5 text-sm font-bold text-white"><PlusIcon className="size-4" />Aggiungi disponibilità</button>
+    <section className="rounded-[2rem] border border-violet/20 bg-gradient-to-br from-violet/[0.16] to-panel p-5"><div className="flex items-center justify-between"><div><p className="flex items-center gap-2 text-xs font-semibold text-violet"><StatusDot />{activeNow} persone attive</p><h2 className="mt-2 text-2xl font-bold">Chi c’è stasera?</h2></div><span className="text-4xl">{emoji}</span></div><button onClick={toggleForm} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet py-3.5 text-sm font-bold text-white"><PlusIcon className="size-4" />{todayEntry ? "Modifica disponibilità" : "Aggiungi disponibilità"}</button>
       {open && <form onSubmit={addAvailability} className="mt-4 border-t border-white/10 pt-4">
         <fieldset><legend className="text-xs font-bold text-zinc-300">Stato</legend><div className="mt-2 grid grid-cols-3 gap-2">{(["free", "maybe", "busy"] as AvailabilityStatus[]).map((value) => <button key={value} type="button" onClick={() => setStatus(value)} className={`rounded-xl border py-3 text-xs font-bold ${status === value ? "border-violet bg-violet text-white" : "border-white/10 bg-black/20 text-zinc-400"}`}>{statusLabels[value]}</button>)}</div></fieldset>
         <fieldset className="mt-4"><legend className="text-xs font-bold text-zinc-300">Giorno</legend><div className="mt-2 grid grid-cols-3 gap-2">{(["today", "tomorrow", "custom"] as const).map((value) => <button key={value} type="button" onClick={() => setDayChoice(value)} className={`rounded-xl border py-3 text-xs font-bold ${dayChoice === value ? "border-violet bg-violet text-white" : "border-white/10 bg-black/20 text-zinc-400"}`}>{value === "today" ? "Oggi" : value === "tomorrow" ? "Domani" : "Altra data"}</button>)}</div></fieldset>
         {dayChoice === "custom" && <input aria-label="Data personalizzata" type="date" min={toLocalDate(new Date())} value={customDate} onChange={(event) => setCustomDate(event.target.value)} className="mt-3 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none focus:border-violet" />}
-        <label htmlFor="availability-note" className="mt-4 block text-xs font-bold text-zinc-300">Nota opzionale</label><input id="availability-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={80} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none focus:border-violet" placeholder="Es. dalle 20:30" />
+        <label htmlFor="availability-note" className="mt-4 block text-xs font-bold text-zinc-300">Nota opzionale</label><input id="availability-note" value={note} onChange={(event) => setNote(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none focus:border-violet" placeholder="Es. dalle 20:30" />
         <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 py-3 text-xs font-bold text-zinc-400">Annulla</button><button type="submit" className="rounded-xl bg-white py-3 text-xs font-bold text-black">Salva</button></div>
       </form>}
     </section>
 
-    <section><SectionHeader title="Disponibilità" /><div className="grid grid-cols-2 gap-3">{groupMembers.map((member) => <div key={member.name} className="rounded-2xl border border-white/10 bg-panel p-3"><div className="flex items-center gap-2"><Avatar initials={member.initials} className="size-9" tone={member.state === "free" ? "bg-violet" : member.state === "later" ? "bg-cyan-300" : "bg-zinc-500"} /><span className="text-sm font-bold">{member.name}</span></div><p className={`mt-3 text-xs font-semibold ${member.state === "free" ? "text-violet" : "text-zinc-500"}`}>{member.availability}</p></div>)}
-      {groupEntries.map((entry) => <div key={entry.id} className="rounded-2xl border border-violet/30 bg-panel p-3"><div className="flex items-center gap-2"><Avatar initials={currentUser.initials} className="size-9" tone={entry.status === "free" ? "bg-violet" : entry.status === "maybe" ? "bg-cyan-300" : "bg-zinc-500"} /><span className="text-sm font-bold">Tu</span></div><p className={`mt-3 text-xs font-semibold ${entry.status === "free" ? "text-violet" : "text-zinc-500"}`}>{statusLabels[entry.status]} · {formatDate(entry.date)}{entry.note ? ` · ${entry.note}` : ""}</p></div>)}
+    <section><SectionHeader title="Disponibilità" /><div className="grid grid-cols-2 gap-3">{visibleMockMembers.map((member) => <div key={member.name} className="rounded-2xl border border-white/10 bg-panel p-3"><div className="flex items-center gap-2"><Avatar initials={member.initials} className="size-9" tone={member.state === "free" ? "bg-violet" : member.state === "later" ? "bg-cyan-300" : "bg-zinc-500"} /><span className="text-sm font-bold">{member.name}</span></div><p className={`mt-3 text-xs font-semibold ${member.state === "free" ? "text-violet" : "text-zinc-500"}`}>{member.availability}</p></div>)}
+      {groupEntries.map((entry) => <div key={entry.id} className="rounded-2xl border border-violet/30 bg-panel p-3"><div className="flex items-center gap-2"><Avatar initials={currentUser.initials} className="size-9" tone={entry.status === "free" ? "bg-violet" : entry.status === "maybe" ? "bg-cyan-300" : "bg-zinc-500"} /><span className="text-sm font-bold">Tu</span></div><p className={`mt-3 text-xs font-semibold ${entry.status === "free" ? "text-violet" : "text-zinc-500"}`}>{statusLabels[entry.status]} · {formatDate(entry.date)}</p>{entry.note && <p className="mt-1 break-words text-xs leading-5 text-zinc-300">{entry.note}</p>}</div>)}
     </div></section>
   </>;
 }

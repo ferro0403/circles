@@ -1,9 +1,10 @@
-import { BellIcon, ChevronRightIcon, PinIcon } from "@/components/icons";
+import { ChevronRightIcon, PinIcon } from "@/components/icons";
 import { PlaceCard } from "@/components/place-card";
 import { Avatar, SectionHeader, StatusDot } from "@/components/ui";
 import { currentUser, friends, places } from "@/data/mock-data";
 import { PersonalStatus } from "@/components/personal-status";
 import { HomeGroupPolls } from "@/components/group-poll-summary";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default function HomePage() {
   return (
@@ -18,7 +19,7 @@ export default function HomePage() {
             <ChevronRightIcon className="size-4 text-zinc-700" />
           </button>
         </div>
-        <button className="relative grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] shadow-card" aria-label="Notifiche"><BellIcon className="size-5" /><span className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-ink bg-violet shadow-glow" /></button>
+        <NotificationBell />
       </header>
 
       <PersonalStatus />

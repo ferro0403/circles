@@ -5,17 +5,30 @@ import Link from "next/link";
 import { CheckIcon, ChevronRightIcon, ClockIcon, PencilIcon } from "@/components/icons";
 import { StatusDot } from "@/components/ui";
 import { SavedAvatar } from "@/components/local-profile";
-import { currentUser } from "@/data/mock-data";
-import { STATUS_STORAGE_KEY, useLocalStorageState } from "@/lib/circle-storage";
+import { currentUser, places } from "@/data/mock-data";
+import { CHECK_IN_STORAGE_KEY, getCheckInRemaining, initialCheckIn, isCheckInActive, STATUS_STORAGE_KEY, useLocalStorageState } from "@/lib/circle-storage";
 
 const presets = ["Libero", "Occupato", "Studio", "Lavoro", "Aperitivo", "Sport"];
 
 export function PersonalStatus() {
   const [status, setStatus] = useLocalStorageState(STATUS_STORAGE_KEY, currentUser.status);
+  const [checkIn, , checkInHydrated] = useLocalStorageState(CHECK_IN_STORAGE_KEY, initialCheckIn);
+  const [now, setNow] = useState(() => Date.now());
   const [draft, setDraft] = useState(status);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => setDraft(status), [status]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const activeCheckIn = checkInHydrated && isCheckInActive(checkIn, now);
+  const selectedPlace = checkIn.mode === "place"
+    ? places.find((place) => place.id === checkIn.selectedPlace)
+    : undefined;
+  const checkInPlace = selectedPlace?.name ?? checkIn.freePlace;
+  const checkInActivity = selectedPlace?.category ?? "Luogo libero";
 
   function saveStatus(event: FormEvent) {
     event.preventDefault();
@@ -57,8 +70,24 @@ export function PersonalStatus() {
           </div>
           {status && <button type="button" onClick={removeStatus} className="mt-3 text-xs font-semibold text-zinc-500">Rimuovi stato</button>}
         </form>
-      ) : (
+      ) : activeCheckIn ? (
+        <Link href="/check-in" className="relative mt-5 block rounded-2xl border border-violet/30 bg-violet/[0.10] px-4 py-3.5 transition hover:border-violet/50">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet">Check-in attivo</p>
+              <p className="mt-1 truncate text-sm font-bold">{checkInPlace}</p>
+            </div>
+            <ChevronRightIcon className="mt-1 size-5 shrink-0 text-violet" />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/10 pt-3 text-xs">
+            <div><span className="block text-zinc-500">Attività</span><span className="mt-0.5 block font-semibold text-zinc-200">{checkInActivity}</span></div>
+            <div><span className="block text-zinc-500">Tempo residuo</span><span className="mt-0.5 block font-semibold text-zinc-200">{getCheckInRemaining(checkIn, now)}</span></div>
+          </div>
+        </Link>
+      ) : checkInHydrated ? (
         <Link href="/check-in" className="relative mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3.5 text-sm font-bold transition hover:border-violet/40">Condividi dove sei<ChevronRightIcon className="size-5 text-violet" /></Link>
+      ) : (
+        <div className="relative mt-5 h-12 animate-pulse rounded-2xl bg-white/[0.04]" />
       )}
     </section>
   );

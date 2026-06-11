@@ -3,28 +3,7 @@
 import { useState } from "react";
 import { CheckIcon, ChevronRightIcon, PinIcon, SearchIcon } from "@/components/icons";
 import { groups, places } from "@/data/mock-data";
-import { CHECK_IN_STORAGE_KEY, useLocalStorageState } from "@/lib/circle-storage";
-
-type CheckIn = {
-  mode: "place" | "free";
-  selectedPlace: string;
-  freePlace: string;
-  mapsUrl: string;
-  visibility: string;
-  duration: string;
-  active: boolean;
-  updatedAt?: string;
-};
-
-const initialCheckIn: CheckIn = {
-  mode: "place",
-  selectedPlace: places[0].id,
-  freePlace: "",
-  mapsUrl: "",
-  visibility: "Amici",
-  duration: "2h",
-  active: false,
-};
+import { CHECK_IN_STORAGE_KEY, CheckIn, getCheckInRemaining, initialCheckIn, isCheckInActive, useLocalStorageState } from "@/lib/circle-storage";
 
 export function CheckInForm() {
   const [checkIn, setCheckIn] = useLocalStorageState(CHECK_IN_STORAGE_KEY, initialCheckIn);
@@ -35,7 +14,13 @@ export function CheckInForm() {
   }
 
   function shareCheckIn() {
-    updateCheckIn({ active: true, updatedAt: new Date().toISOString() });
+    const now = new Date();
+    const durationHours = checkIn.duration === "Domani" ? 24 : Number.parseInt(checkIn.duration, 10);
+    updateCheckIn({
+      active: true,
+      updatedAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + durationHours * 60 * 60_000).toISOString(),
+    });
     setEditing(false);
   }
 
@@ -44,11 +29,11 @@ export function CheckInForm() {
     setEditing(false);
   }
 
-  if (checkIn.active && !editing) {
+  if (isCheckInActive(checkIn) && !editing) {
     const placeName = checkIn.mode === "place"
       ? places.find((place) => place.id === checkIn.selectedPlace)?.name
       : checkIn.freePlace;
-    return <div className="flex min-h-[65vh] flex-col items-center justify-center text-center"><div className="grid size-20 place-items-center rounded-full bg-violet text-white shadow-glow"><CheckIcon className="size-10" /></div><h2 className="mt-6 text-3xl font-bold">Check-in condiviso!</h2><p className="mt-2 max-w-xs text-sm leading-6 text-zinc-400">{placeName ? `Sei da ${placeName}. ` : ""}I tuoi amici ora sanno dove trovarti. Lo stato scadrà automaticamente tra {checkIn.duration}.</p><button onClick={() => setEditing(true)} className="mt-8 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold">Modifica check-in</button><button onClick={removeCheckIn} className="mt-3 text-xs font-semibold text-zinc-500">Rimuovi check-in</button></div>;
+    return <div className="flex min-h-[65vh] flex-col items-center justify-center text-center"><div className="grid size-20 place-items-center rounded-full bg-violet text-white shadow-glow"><CheckIcon className="size-10" /></div><h2 className="mt-6 text-3xl font-bold">Check-in condiviso!</h2><p className="mt-2 max-w-xs text-sm leading-6 text-zinc-400">{placeName ? `Sei da ${placeName}. ` : ""}I tuoi amici ora sanno dove trovarti. Attività: {checkIn.mode === "place" ? places.find((place) => place.id === checkIn.selectedPlace)?.category ?? "Attività" : "Luogo libero"}. Tempo residuo: {getCheckInRemaining(checkIn)}.</p><button onClick={() => setEditing(true)} className="mt-8 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold">Modifica check-in</button><button onClick={removeCheckIn} className="mt-3 text-xs font-semibold text-zinc-500">Rimuovi check-in</button></div>;
   }
 
   return (
@@ -65,7 +50,7 @@ export function CheckInForm() {
       <fieldset><legend className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-500">Per quanto tempo?</legend><div className="grid grid-cols-4 gap-2">{["1h", "2h", "4h", "Domani"].map((item) => <button key={item} onClick={() => updateCheckIn({ duration: item })} className={`rounded-2xl border py-3 text-xs font-bold ${checkIn.duration === item ? "border-violet bg-violet text-white" : "border-white/10 bg-panel text-zinc-400"}`}>{item}</button>)}</div></fieldset>
 
       <button onClick={shareCheckIn} disabled={checkIn.mode === "free" && !checkIn.freePlace.trim()} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet py-4 font-bold text-white shadow-glow transition active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50">Condividi adesso<ChevronRightIcon className="size-5" /></button>
-      {checkIn.active && <button onClick={() => setEditing(false)} className="w-full text-center text-xs font-semibold text-zinc-500">Annulla modifiche</button>}
+      {isCheckInActive(checkIn) && <button onClick={() => setEditing(false)} className="w-full text-center text-xs font-semibold text-zinc-500">Annulla modifiche</button>}
       <p className="text-center text-[11px] leading-5 text-zinc-600">Il check-in si cancella automaticamente alla scadenza. Nessuna posizione viene tracciata.</p>
     </div>
   );

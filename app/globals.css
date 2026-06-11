@@ -20,3 +20,6 @@ button { cursor: pointer; }
 .hide-scrollbar { scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .safe-top { padding-top: max(0.5rem, env(safe-area-inset-top)); }
+
+.centered-date-time::-webkit-date-and-time-value { text-align: center; }
+.centered-date-time::-webkit-datetime-edit { display: flex; justify-content: center; }
